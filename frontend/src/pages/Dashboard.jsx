@@ -48,6 +48,26 @@ function ratingStars(value = 0) {
   return '★'.repeat(rating) + '☆'.repeat(5 - rating);
 }
 
+function getDoctorInfo(feedback) {
+  if (!feedback) return null;
+
+  if (feedback.doctor_info && typeof feedback.doctor_info === 'object') {
+    return feedback.doctor_info;
+  }
+
+  if (feedback.doctor && typeof feedback.doctor === 'object') {
+    return feedback.doctor;
+  }
+
+  return null;
+}
+
+function getDoctorName(feedback) {
+  const doctor = getDoctorInfo(feedback);
+  return doctor?.name || 'No Doctor Selected';
+}
+
+
 function StatCard({ label, value, icon, tone = 'cyan' }) {
   const toneMap = {
     cyan: 'bg-cyan-100 text-cyan-700',
@@ -279,14 +299,197 @@ function QuestionFormModal({ question, isOpen, onClose, onSave }) {
   );
 }
 
+
+function DoctorFormModal({ doctor, isOpen, onClose, onSave }) {
+  const emptyForm = {
+    name: '',
+    specialization: '',
+    qualifications: '',
+    chamber_time: '',
+    fee: '',
+    is_active: true,
+    order: 0,
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
+
+  useEffect(() => {
+    if (doctor) {
+      setFormData({
+        name: doctor.name || '',
+        specialization: doctor.specialization || '',
+        qualifications: doctor.qualifications || '',
+        chamber_time: doctor.chamber_time || '',
+        fee: doctor.fee || '',
+        is_active: doctor.is_active !== undefined ? doctor.is_active : true,
+        order: doctor.order || 0,
+      });
+    } else {
+      setFormData(emptyForm);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doctor, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : name === 'order' ? Number(value) : value,
+    }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div>
+              <h2 className="text-2xl font-black text-gray-900">
+                {doctor ? 'Edit Doctor' : 'Add New Doctor'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Manage doctors shown in the patient feedback form.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Doctor Name *</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+              placeholder="e.g., Dr. Md. Example"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Specialization</label>
+            <input
+              type="text"
+              name="specialization"
+              value={formData.specialization}
+              onChange={handleChange}
+              className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+              placeholder="e.g., Medicine Specialist"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Qualifications</label>
+            <textarea
+              name="qualifications"
+              value={formData.qualifications}
+              onChange={handleChange}
+              rows="2"
+              className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+              placeholder="e.g., MBBS, FCPS"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-bold text-gray-700 mb-1">Chamber Time</label>
+              <input
+                type="text"
+                name="chamber_time"
+                value={formData.chamber_time}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+                placeholder="e.g., Saturday–Thursday, 5:30 PM - 7:00 PM"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Fee</label>
+              <input
+                type="text"
+                name="fee"
+                value={formData.fee}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+                placeholder="700 BDT"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Order</label>
+              <input
+                type="number"
+                name="order"
+                value={formData.order}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 cursor-pointer mt-6">
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleChange}
+                className="h-5 w-5 text-cyan-600 rounded"
+              />
+              <span className="text-sm font-bold text-gray-700">Active</span>
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3 rounded-2xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 text-white font-bold hover:from-cyan-700 hover:to-emerald-700"
+            >
+              {doctor ? 'Update' : 'Create'} Doctor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 export default function HealthcareDashboard() {
   const [stats, setStats] = useState({ total_feedbacks: 0, average_rating: 0, status_counts: {}, rating_distribution: {}, question_stats: [] });
   const [feedbacks, setFeedbacks] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingDoctor, setEditingDoctor] = useState(null);
+const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
+const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -317,11 +520,24 @@ export default function HealthcareDashboard() {
     const data = await apiFetch('questions/');
     setQuestions(Array.isArray(data) ? data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []);
   };
+  const fetchDoctors = async () => {
+  const data = await apiFetch('doctors/');
+  const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
 
-  const refreshAll = async () => {
-    setError('');
-    await Promise.all([fetchDashboardData(), fetchFeedbacks(), fetchQuestions()]);
-  };
+  setDoctors(
+    list.sort((a, b) => {
+      const orderA = a.order ?? 0;
+      const orderB = b.order ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    })
+  );
+};
+
+const refreshAll = async () => {
+  setError('');
+  await Promise.all([fetchDashboardData(), fetchFeedbacks(), fetchQuestions(), fetchDoctors()]);
+};
 
   useEffect(() => {
     refreshAll().catch((err) => setError(err.message || 'Failed to load dashboard.')).finally(() => setLoading(false));
@@ -365,6 +581,33 @@ export default function HealthcareDashboard() {
     await fetchQuestions();
   };
 
+  const handleSaveDoctor = async (doctorData) => {
+  const url = editingDoctor ? `doctors/${editingDoctor.id}/` : 'doctors/';
+
+  await apiFetch(url, {
+    method: editingDoctor ? 'PUT' : 'POST',
+    body: JSON.stringify(doctorData),
+  });
+
+  setIsDoctorModalOpen(false);
+  setEditingDoctor(null);
+
+  await Promise.all([fetchDoctors(), fetchFeedbacks()]);
+};
+
+const handleDeleteDoctor = async (doctorId) => {
+  const doctor = doctors.find((item) => item.id === doctorId);
+  const doctorName = doctor?.name || 'this doctor';
+
+  if (!window.confirm(`Delete ${doctorName}? Existing feedbacks for this doctor will show "No Doctor Selected".`)) {
+    return;
+  }
+
+  await apiFetch(`doctors/${doctorId}/`, { method: 'DELETE' });
+
+  await Promise.all([fetchDoctors(), fetchFeedbacks()]);
+};
+
   const handleDragEnd = async ({ active, over }) => {
     if (!over || active.id === over.id) return;
 
@@ -391,12 +634,24 @@ export default function HealthcareDashboard() {
     const now = new Date();
     return feedbacks.filter((feedback) => {
       const search = searchTerm.trim().toLowerCase();
-      const phone = String(feedback.phone_number || '').toLowerCase();
-      const answerText = (feedback.answers || [])
+     const phone = String(feedback.phone_number || '').toLowerCase();
+const doctor = getDoctorInfo(feedback);
+const doctorText = [
+  doctor?.name,
+  doctor?.specialization,
+  doctor?.qualifications,
+  doctor?.chamber_time,
+  doctor?.fee,
+]
+  .filter(Boolean)
+  .join(' ')
+  .toLowerCase();
+
+const answerText = (feedback.answers || [])
         .map((answer) => [answer.question_english, answer.question_bangla, answer.text_value, answer.date_value].filter(Boolean).join(' '))
         .join(' ')
         .toLowerCase();
-      const matchesSearch = !search || phone.includes(search) || answerText.includes(search);
+const matchesSearch = !search || phone.includes(search) || answerText.includes(search) || doctorText.includes(search);
       const matchesStatus = statusFilter === 'all' || feedback.status === statusFilter;
 
       let matchesDate = true;
@@ -516,7 +771,7 @@ export default function HealthcareDashboard() {
       <div className="bg-white/80 backdrop-blur-xl shadow-sm sticky top-0 z-20 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
           <nav className="flex gap-1 min-w-max">
-            {['overview', 'responses', 'questions', 'analytics', 'bulk'].map((tab) => (
+{['overview', 'responses', 'questions', 'doctors', 'analytics', 'bulk'].map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -573,6 +828,22 @@ export default function HealthcareDashboard() {
             setQuestionViewMode={setQuestionViewMode}
           />
         )}
+        {activeTab === 'doctors' && (
+  <DoctorsTab
+    doctors={doctors}
+    searchTerm={doctorSearchTerm}
+    setSearchTerm={setDoctorSearchTerm}
+    onAddDoctor={() => {
+      setEditingDoctor(null);
+      setIsDoctorModalOpen(true);
+    }}
+    onEditDoctor={(doctor) => {
+      setEditingDoctor(doctor);
+      setIsDoctorModalOpen(true);
+    }}
+    onDeleteDoctor={handleDeleteDoctor}
+  />
+)}
         {activeTab === 'analytics' && <AnalyticsTab stats={stats} />}
         {activeTab === 'bulk' && <BulkSMSTab status={bulkSmsStatus} setStatus={setBulkSmsStatus} defaultNumbers={filteredFeedbacks.map((f) => f.phone_number).filter(hasUsablePhone)} />}
       </main>
@@ -583,6 +854,15 @@ export default function HealthcareDashboard() {
         onClose={() => { setIsQuestionModalOpen(false); setEditingQuestion(null); }}
         onSave={handleSaveQuestion}
       />
+      <DoctorFormModal
+  doctor={editingDoctor}
+  isOpen={isDoctorModalOpen}
+  onClose={() => {
+    setIsDoctorModalOpen(false);
+    setEditingDoctor(null);
+  }}
+  onSave={handleSaveDoctor}
+/>
     </div>
   );
 }
@@ -609,16 +889,27 @@ function OverviewTab({ stats, feedbacks }) {
             <table className="min-w-full divide-y divide-gray-100">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Rating</th>
-                  <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Doctor</th>
+<th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Phone</th>
+<th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Rating</th>
+<th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Status</th>
+<th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {recentFeedbacks.map((feedback) => (
                   <tr key={feedback.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-bold text-gray-900">{hasUsablePhone(feedback.phone_number) ? feedback.phone_number : <span className="text-amber-700">No Phone</span>}</td>
+                    <td className="px-4 py-3 text-sm">
+  <div className="font-black text-gray-900 max-w-[220px] truncate">
+    {getDoctorName(feedback)}
+  </div>
+  {getDoctorInfo(feedback)?.specialization && (
+    <div className="text-xs text-cyan-700 max-w-[220px] truncate">
+      {getDoctorInfo(feedback).specialization}
+    </div>
+  )}
+</td>
                     <td className="px-4 py-3 text-sm"><span className="text-yellow-400">★</span> {feedback.average_rating}</td>
                     <td className="px-4 py-3"><span className={cls('px-2.5 py-1 text-xs font-bold rounded-full ring-1', statusBadgeClass(feedback.status))}>{String(feedback.status || '').replace('_', ' ')}</span></td>
                     <td className="px-4 py-3 text-sm text-gray-700">{formatDate(feedback.created_at)}</td>
@@ -696,7 +987,7 @@ function ResponsesTab({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search phone or answer..."
+placeholder="Search phone, doctor, or answer..."
             className="md:col-span-2 w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
           />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none">
@@ -748,6 +1039,10 @@ function ResponsesTab({
                           )}
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{formatDateTime(feedback.created_at)}</p>
+                        <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800">
+  <span>👨‍⚕️</span>
+  <span className="truncate">{getDoctorName(feedback)}</span>
+</div>
                       </div>
                       <div className="text-right">
                         <div className="text-yellow-400 text-sm">{ratingStars(feedback.average_rating)}</div>
@@ -784,6 +1079,8 @@ function FeedbackDetails({ selectedFeedback, updateFeedbackStatus }) {
     );
   }
 
+  const doctor = getDoctorInfo(selectedFeedback);
+
   const renderAnswerValue = (answer) => {
     if (answer.rating_value) return <span><span className="text-yellow-400">{ratingStars(answer.rating_value)}</span> <b>{answer.rating_value}/5</b></span>;
     if (answer.text_value) return <p className="bg-gray-50 p-3 rounded-xl text-gray-700">{answer.text_value}</p>;
@@ -796,6 +1093,39 @@ function FeedbackDetails({ selectedFeedback, updateFeedbackStatus }) {
     <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
       <h3 className="text-xl font-black text-gray-900 mb-5">Feedback Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div className="md:col-span-2 bg-gradient-to-r from-cyan-50 to-emerald-50 rounded-2xl p-4 border border-cyan-100">
+  <p className="text-xs font-black text-cyan-700 uppercase">Doctor This Response Is About</p>
+
+  <p className="mt-1 font-black text-gray-900">
+    {doctor?.name || 'No Doctor Selected'}
+  </p>
+
+  {doctor?.specialization && (
+    <p className="mt-1 text-sm font-bold text-cyan-700">
+      {doctor.specialization}
+    </p>
+  )}
+
+  {doctor?.qualifications && (
+    <p className="mt-1 text-sm text-gray-600">
+      {doctor.qualifications}
+    </p>
+  )}
+
+  <div className="mt-2 flex flex-wrap gap-2">
+    {doctor?.chamber_time && (
+      <span className="text-xs bg-white text-gray-700 px-2 py-1 rounded-full border border-cyan-100">
+        🕒 {doctor.chamber_time}
+      </span>
+    )}
+
+    {doctor?.fee && (
+      <span className="text-xs bg-white text-emerald-700 px-2 py-1 rounded-full border border-emerald-100">
+        Fee: {doctor.fee}
+      </span>
+    )}
+  </div>
+</div>
         <div className="bg-gray-50 rounded-2xl p-4">
           <p className="text-xs font-black text-gray-500 uppercase">Phone Number</p>
           <p className="mt-1 font-black text-gray-900 break-all">{hasUsablePhone(selectedFeedback.phone_number) ? selectedFeedback.phone_number : 'Not Provided'}</p>
@@ -881,6 +1211,140 @@ function QuestionsTab({ questions, allQuestions, onAddQuestion, onEditQuestion, 
       </DndContext>
 
       {!questions.length && <div className="text-center py-10 text-gray-500 font-semibold">No questions found in this view.</div>}
+    </div>
+  );
+}
+
+function DoctorsTab({ doctors, searchTerm, setSearchTerm, onAddDoctor, onEditDoctor, onDeleteDoctor }) {
+  const filteredDoctors = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+
+    if (!search) return doctors;
+
+    return doctors.filter((doctor) => {
+      const text = [
+        doctor.name,
+        doctor.specialization,
+        doctor.qualifications,
+        doctor.chamber_time,
+        doctor.fee,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return text.includes(search);
+    });
+  }, [doctors, searchTerm]);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-xl font-black text-gray-900">Doctor Management</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {filteredDoctors.length} showing • {doctors.length} total doctors
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search doctor, department, fee..."
+            className="w-full sm:w-80 p-3 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 outline-none"
+          />
+
+          <button
+            onClick={onAddDoctor}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 text-white text-sm font-black hover:from-cyan-700 hover:to-emerald-700 whitespace-nowrap"
+          >
+            + Add Doctor
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {filteredDoctors.map((doctor) => (
+          <div
+            key={doctor.id}
+            className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-cyan-50/40 p-5 shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-xs font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    Order: {doctor.order ?? 0}
+                  </span>
+
+                  <span className={cls(
+                    'text-xs font-black px-2 py-1 rounded-full',
+                    doctor.is_active
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                  )}>
+                    {doctor.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                <h4 className="font-black text-gray-900 leading-snug">
+                  {doctor.name}
+                </h4>
+
+                {doctor.specialization && (
+                  <p className="mt-1 text-sm font-bold text-cyan-700">
+                    {doctor.specialization}
+                  </p>
+                )}
+
+                {doctor.qualifications && (
+                  <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                    {doctor.qualifications}
+                  </p>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {doctor.chamber_time && (
+                    <span className="text-xs bg-white text-gray-700 px-2 py-1 rounded-full border border-gray-100">
+                      🕒 {doctor.chamber_time}
+                    </span>
+                  )}
+
+                  {doctor.fee && (
+                    <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full border border-emerald-100">
+                      Fee: {doctor.fee}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onEditDoctor(doctor)}
+                  className="px-3 py-2 text-sm font-bold text-cyan-700 hover:bg-cyan-100 rounded-xl"
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onDeleteDoctor(doctor.id)}
+                  className="px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-100 rounded-xl"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!filteredDoctors.length && (
+        <div className="text-center py-12 text-gray-500 font-semibold">
+          No doctors found.
+        </div>
+      )}
     </div>
   );
 }
