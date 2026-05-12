@@ -7,6 +7,7 @@ router.register(r'questions', views.QuestionViewSet)
 router.register(r'feedback', views.FeedbackResponseViewSet)
 router.register(r'answers', views.AnswerViewSet)
 
+router.register(r'doctors', views.DoctorViewSet)
 urlpatterns = [
     path('questions/additional/', views.get_additional_questions, name='additional-questions'),
         path('questions/update_order/', views.update_question_order, name='update-question-order'),

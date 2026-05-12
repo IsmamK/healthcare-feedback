@@ -26,6 +26,22 @@ class Question(models.Model):
         return f"{self.id_name} - {self.english_text[:50]}"
 
 
+class Doctor(models.Model):
+    name = models.CharField(max_length=200)
+    specialization = models.CharField(max_length=200, blank=True)
+    qualifications = models.TextField(blank=True)
+    chamber_time = models.CharField(max_length=200, blank=True)
+    fee = models.CharField(max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order', 'name']
+    
+    def __str__(self):
+        return f"{self.name} - {self.specialization}"
+    
+    
 class FeedbackResponse(models.Model):
     RATING_VALUES = [
         (5, 'Excellent'),
@@ -34,6 +50,8 @@ class FeedbackResponse(models.Model):
         (2, 'Unsatisfied'),
         (1, 'Poor'),
     ]
+
+    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='feedbacks')
     
     STATUS_CHOICES = [
         ('new', 'New'),

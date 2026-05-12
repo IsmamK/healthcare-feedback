@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-q#6j58=74$3x4wx1$z5io-ikmy9_^fn*mn$c%00yb5lk5hy@ro
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "jghealthcare.stechgroupbd.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -40,14 +44,31 @@ INSTALLED_APPS = [
         "corsheaders",
     'rest_framework',
     "api",
+
+    'rest_framework.authtoken',
+        'djoser',  # Add djoser
+
 ]
 CORS_ALLOW_ALL_ORIGINS = True  # or set CORS_ALLOWED_ORIGINS for production
+
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Default to authenticated
     ]
 }
 
+DJOSER = {
+    'USER_ID_FIELD': 'id',
+    'LOGIN_FIELD': 'username',
+    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
+    'SERIALIZERS': {
+        'token_create': 'djoser.serializers.TokenCreateSerializer',
+    }
+}
 
 MIDDLEWARE = [
         "corsheaders.middleware.CorsMiddleware",
@@ -87,8 +108,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,
+        }
     }
 }
+
 
 
 # Password validation
@@ -115,7 +140,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Dhaka'
+
 
 USE_I18N = True
 
@@ -131,3 +157,20 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'jghealthcare.stechgroupbd.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+
+EMAIL_HOST_USER = 'feedback@jghealthcare.stechgroupbd.com'
+EMAIL_HOST_PASSWORD = 'JgHealth@2026Secure!'
+
+DEFAULT_FROM_EMAIL = 'JG Healthcare <feedback@jghealthcare.stechgroupbd.com>'
+
+LOW_RATING_EMAILS = [
+    "ceo@stechgroupbd.com",
+    "ismam.oisbd@gmail.com",
+]

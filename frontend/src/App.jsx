@@ -1,32 +1,28 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import V1 from './pages/V1';
+import FeedbackDashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import { getAuthToken } from './config/api';
 
-import V1 from "./pages/V1";
-
-
-import FeedbackDashboard from "./pages/Dashboard";
-
+function ProtectedRoute({ children }) {
+  return getAuthToken() ? children : <Navigate to="/login" replace />;
+}
 
 function App() {
   return (
     <BrowserRouter>
-      {/* <nav className="bg-blue-600 p-4 text-white flex space-x-4">
-        <Link to="/v1">V1</Link>
-        <Link to="/v2">V2</Link>
-      </nav> */}
-
       <Routes>
-
         <Route path="/" element={<V1 />} />
-
-        <Route path="/dashboard" element={<FeedbackDashboard />} />
-
-
- 
-        {/* <Route path="/activities" element={<Activities />} />
-        <Route path="/lessons" element={<Lessons />} /> */}
-
-
-
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <FeedbackDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

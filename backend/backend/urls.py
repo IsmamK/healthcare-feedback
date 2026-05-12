@@ -21,4 +21,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),  # ✅ Correct way to include app urls
 
+        path('auth/', include('djoser.urls')),  # Djoser authentication views
+    path('auth/', include('djoser.urls.authtoken')),  #
+
 ]
