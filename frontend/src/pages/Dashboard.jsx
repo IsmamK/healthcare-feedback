@@ -20,7 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
-import { apiFetch, formatDate, formatDateTime, hasUsablePhone } from '../config/api';
+import { apiFetch, AUTH_BASE_URL, authHeaders, formatDate, formatDateTime, hasUsablePhone } from '../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -550,9 +550,22 @@ const refreshAll = async () => {
     return () => clearTimeout(timer);
   }, [copySuccess]);
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    window.location.href = '/login';
+  const logout = async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      await fetch(`${AUTH_BASE_URL}token/logout/`, {
+        method: 'POST',
+        headers: authHeaders(),
+        signal: controller.signal,
+      });
+    } catch {
+      // Always remove the local session even when the network is unavailable.
+    } finally {
+      window.clearTimeout(timeout);
+      localStorage.removeItem('auth_token');
+      window.location.href = '/login';
+    }
   };
 
   const updateFeedbackStatus = async (feedbackId, newStatus) => {
