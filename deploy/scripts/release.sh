@@ -69,6 +69,9 @@ plan=$(compose run --rm -T --no-deps backend python manage.py deployment_plan)
 pending=$(printf '%s' "$plan" | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["pending"]))')
 existing=$(printf '%s' "$plan" | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["existing_schema"]))')
 if [[ "$pending" != 0 ]]; then
+  if [[ "$existing" == 0 ]]; then
+    [[ "${INITIALIZE_EMPTY_DATABASE:-false}" == true ]] || fail 'Confirm initialization of a new database or import existing production data before proceeding'
+  fi
   if [[ "$existing" == 1 ]]; then
     [[ -f "$PROJECT_ROOT/env/migration-approved-sha" ]] && \
       [[ $(cat "$PROJECT_ROOT/env/migration-approved-sha") == "$new_sha" ]] \
@@ -78,7 +81,6 @@ if [[ "$pending" != 0 ]]; then
   changed_db=1
   compose run --rm -T --no-deps backend python manage.py migrate --noinput
   if [[ "$existing" == 0 ]]; then
-    [[ "${INITIALIZE_EMPTY_DATABASE:-false}" == true ]] || fail 'Confirm initialization of a new database or import existing production data before proceeding'
     compose run --rm -T --no-deps backend python manage.py populate_questions
     compose run --rm -T --no-deps backend python manage.py populate_doctors
   fi

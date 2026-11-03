@@ -75,8 +75,9 @@ server {{
 """
     result += f"""
 server {{
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name {' '.join(dict.fromkeys((front, api)))};
 {certificate}
 {routes}
@@ -85,8 +86,9 @@ server {{
     if www:
         result += f"""
 server {{
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name {www};
 {certificate}
     return 301 https://{front}$request_uri;

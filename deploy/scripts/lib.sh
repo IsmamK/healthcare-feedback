@@ -7,7 +7,7 @@ PROJECT_ROOT=${PROJECT_ROOT:-/opt/healthcare-feedback}
 export PROJECT_ROOT
 export DOCKER_CONFIG="${HOME}/.docker-healthcare-feedback"
 PROJECT=healthcare-feedback
-fail() { echo "$*" >&2; exit 1; }
+fail() { echo "$*" >&2; return 1; }
 load_site() {
   [[ -r "$PROJECT_ROOT/env/site.env" ]] || fail 'Missing env/site.env'
   # shellcheck source=/dev/null

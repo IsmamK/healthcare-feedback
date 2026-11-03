@@ -30,10 +30,11 @@ Observed on 3 November 2026. Production has **not** been deployed or verified.
 - 12 operational tests pass, covering initial/partial/missing-image/documentation/infrastructure build decisions, immutable metadata validation and Nginx rendering.
 - Frontend lint and production build pass. Vite reports a non-fatal bundle-size advisory for the existing approximately 520 kB JS bundle.
 - Compose configuration and shell syntax checks pass. `actionlint` validates the workflow.
+- Real GitHub pull-request CI [run 41626440451](https://github.com/IsmamK/healthcare-feedback/actions/runs/41626440451) completed successfully; the deployment job was deliberately skipped on the PR. This verifies CI checks, not a production deployment. Preparation is published in [draft PR 1](https://github.com/IsmamK/healthcare-feedback/pull/1).
 - Both local Docker images build; production collectstatic and `check --deploy --fail-level WARNING` pass. HSTS include-subdomains/preload warnings are deliberately silenced to avoid asserting unverified domain-wide policy; all other deployment warnings remain fatal.
 - The production-mode local Compose smoke test passes with persistent PostgreSQL, fresh migrations, survey initialization, dependency-aware health, SPA fallback, anonymous-record rejection and verified non-root UIDs. A real database dump was created/validated and restored into a separate no-network test container. These are local tests, not production backup/restore claims.
 - Rendered TLS Nginx configuration passes a real `nginx -t` using a disposable test certificate. Shared-host Nginx validation remains pending authorized sudo access.
-- Docker-reported local image sizes: backend 62,368,999 bytes (59.5 MiB); frontend 23,557,064 bytes (22.5 MiB). Registry-pushed image digests have not been observed; local image IDs are not a substitute.
+- Docker-reported local image sizes: backend 62,368,999 bytes (59.5 MiB); frontend 26,097,673 bytes (24.9 MiB). The frontend runtime is pinned to the observed current Nginx 1.30 stable image and its non-root/read-only/SPA health smoke test passes. Registry-pushed image digests have not been observed; local image IDs are not a substitute.
 - Backend requirements audit: no known vulnerabilities reported. Frontend production dependency audit: zero advisories. Six moderate advisories remain in the development-only ESLint/minimatch dependency chain; `npm audit fix` reports no compatible fix. These tools are absent from the frontend runtime image.
 
 ## Remaining blockers and resume point

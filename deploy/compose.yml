@@ -21,6 +21,7 @@ services:
     image: ${BACKEND_IMAGE:?Set immutable BACKEND_IMAGE}
     restart: unless-stopped
     init: true
+    stop_grace_period: 45s
     env_file:
       - path: ${PROJECT_ROOT}/env/backend.env
         format: raw
