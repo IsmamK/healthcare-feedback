@@ -85,7 +85,7 @@ jobs:
             BatchMode yes
             ConnectTimeout 15
           EOF
-          ssh healthcare-feedback-vps 'test -d /opt/healthcare-feedback/env && test ! -e /opt/healthcare-feedback/transaction.pending'
+          ssh healthcare-feedback-vps 'test -s /opt/healthcare-feedback/.env && test -d /opt/healthcare-feedback/env && test ! -e /opt/healthcare-feedback/transaction.pending'
           ssh healthcare-feedback-vps 'if test -f /opt/healthcare-feedback/current/images.env; then cat /opt/healthcare-feedback/current/images.env; fi' > "$RUNNER_TEMP/previous.env"
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
@@ -136,7 +136,7 @@ jobs:
           release="$PROJECT_ROOT/releases/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           ssh healthcare-feedback-vps "mkdir -m 700 '$release'"
           # Copy only reviewed operational files. Never transfer runtime env files or application source.
-          tar -C deploy -czf "$RUNNER_TEMP/release.tar.gz" compose.yml scripts images.env \
+          tar -C deploy -czf "$RUNNER_TEMP/release.tar.gz" compose.yml scripts images.env .env.example \
             env/backend.env.example env/database.env.example env/frontend.env.example env/site.env.example env/backup.env.example
           scp "$RUNNER_TEMP/release.tar.gz" "healthcare-feedback-vps:$release/bundle.tar.gz"
           ssh healthcare-feedback-vps "tar -xzf '$release/bundle.tar.gz' -C '$release' && bash '$release/scripts/release.sh' '$release'"
