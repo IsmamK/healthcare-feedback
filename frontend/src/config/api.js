@@ -1,4 +1,4 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://jghealthcare.stechgroupbd.com/backend/api/').replace(/\/?$/, '/');
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || '/backend/api/').replace(/\/?$/, '/');
 export const AUTH_BASE_URL = API_BASE_URL.replace(/api\/$/, 'auth/');
 
 export const getAuthToken = () => localStorage.getItem('auth_token');

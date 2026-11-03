@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Avg, Count
@@ -11,6 +11,11 @@ from .serializers import (
 
 from django.core.mail import send_mail
 from django.conf import settings
+from rest_framework.permissions import AllowAny, IsAdminUser
+from .permissions import PublicReadStaffWrite
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ----------------------
@@ -22,7 +27,7 @@ from django.conf import settings
 class QuestionViewSet(viewsets.ModelViewSet):
     queryset = Question.objects.filter(is_active=True).order_by('order')
     serializer_class = QuestionSerializer
-    permission_classes = []
+    permission_classes = [PublicReadStaffWrite]
 
 
 class FeedbackResponseViewSet(viewsets.ModelViewSet):
@@ -32,7 +37,7 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
     """
     queryset = FeedbackResponse.objects.all().order_by('-created_at')
     serializer_class = FeedbackResponseSerializer
-    permission_classes = []
+    permission_classes = [IsAdminUser]
 
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):
@@ -44,7 +49,7 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
             return Response({'status': 'updated'})
         return Response({'error': 'Invalid status'}, status=400)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def submit_feedback(self, request):
         serializer = FeedbackSubmissionSerializer(data=request.data)
         if serializer.is_valid():
@@ -130,8 +135,9 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
                     status=201
                 )
 
-            except Exception as e:
-                return Response({'error': str(e)}, status=400)
+            except Exception:
+                logger.error("Feedback submission failed")
+                return Response({'error': 'Unable to submit feedback'}, status=400)
 
         return Response(serializer.errors, status=400)
 
@@ -461,7 +467,7 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
                         <div class="divider"></div>
                         
                         <div class="dashboard-link">
-                            <a href="https://jghealthcare.stechgroupbd.com/dashboard/feedback/{feedback.id}/" class="dashboard-button">
+                            <a href="{settings.FRONTEND_URL}/dashboard" class="dashboard-button">
                                 🔍 View Full Details
                             </a>
                         </div>
@@ -534,7 +540,7 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
             text_content += f"""
 
     {'=' * 50}
-    View in Dashboard: https://jghealthcare.stechgroupbd.com/dashboard/feedback/{feedback.id}/
+    View in Dashboard: {settings.FRONTEND_URL}/dashboard
     {'=' * 50}
     """
             
@@ -551,8 +557,8 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
                     )
                     msg.attach_alternative(html_content, "text/html")
                     msg.send(fail_silently=False)
-                except Exception as e:
-                    print(f"Failed to send email to {email}: {str(e)}")
+                except Exception:
+                    logger.error("Low-rating notification delivery failed")
 
 
 class AnswerViewSet(viewsets.ReadOnlyModelViewSet):
@@ -638,6 +644,7 @@ def update_feedback_status(request, feedback_id):
 
 # views.py
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_additional_questions(request):
     """
     Endpoint: /api/questions/additional/
@@ -676,4 +683,4 @@ from .serializers import DoctorSerializer
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.filter(is_active=True).order_by('order', 'name')
     serializer_class = DoctorSerializer
-    permission_classes = []
+    permission_classes = [PublicReadStaffWrite]

@@ -1,0 +1,12 @@
+**/__pycache__
+**/*.pyc
+.venv
+venv
+.env*
+*.sqlite3
+staticfiles
+media
+node_modules
+package*.json
+.git
+tests-output

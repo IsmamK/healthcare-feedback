@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 // ---------- Utility helpers ----------
 const cls = (...args) => args.filter(Boolean).join(' ');
@@ -136,7 +137,7 @@ const [doctorError, setDoctorError] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
   const [countdown, setCountdown] = useState(10);
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+  const apiUrl = API_BASE_URL;
 
 
   useEffect(() => {
@@ -205,9 +206,7 @@ const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
 
-  const answeredMainQuestions = useMemo(() => {
-    return questions.filter((question) => isQuestionAnswered(question)).length;
-  }, [questions, answers]);
+  const answeredMainQuestions = questions.filter(isQuestionAnswered).length;
 
   const completionPercent = totalQuestions
     ? Math.round((answeredMainQuestions / totalQuestions) * 100)
