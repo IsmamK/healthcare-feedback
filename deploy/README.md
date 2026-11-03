@@ -4,7 +4,7 @@ The application is prepared for an isolated Docker deployment on the shared VPS 
 
 ## Current deployment state
 
-Repository preparation and local verification are complete. Public production deployment, certificate issuance, registry publication, GitHub deployment execution, production backups and restore tests have **not** been completed. See [STATUS.md](STATUS.md) for the latest observed results and resume point. Do not equate a passing CI check or a local image build with a working production release.
+Production deployment, valid HTTPS, registry publication, two real CI/CD releases, browser verification and local backup/restore have completed successfully. See [STATUS.md](STATUS.md) for the latest observed results and resume point. Do not equate a passing CI check or a local image build with a working production release.
 
 ## Architecture and isolation
 
@@ -33,7 +33,7 @@ The generated `env/*.env` files should not be edited directly. Values in the mai
 Provide secret material through a protected local file or a secure interactive CLI, never chat or Git. The agent can copy/configure it without printing values.
 
 1. Authorized sudo access for project directory creation, the project vhost, Certbot and certificate renewal checks. SSH as `abdullah` works, but `sudo -n` currently requires a password. Do not bypass this through Docker's root privileges.
-2. A Docker Hub namespace and two repositories: `<namespace>/healthcare-feedback-backend` and `<namespace>/healthcare-feedback-frontend`. Prefer private repositories. Use a dedicated CI Read+Write PAT, and a separate VPS Read-only PAT for private pulls. Existing other-project registry credentials are not reused.
+2. A Docker Hub namespace and two repositories: `<namespace>/healthcare-feedback-backend` and `<namespace>/healthcare-feedback-frontend`. The owner selected public repositories. The CI Read+Write PAT is stored in GitHub; public pulls avoid placing that push credential on the VPS. Private repositories would require a separate VPS Read-only token. Existing other-project registry credentials are not reused.
 3. A certificate notification email, or explicit `CERTBOT_WITHOUT_EMAIL=true`. The owner chose issuance without a contact email. Automatic renewal remains enabled; email expiry notices are unavailable.
 4. This installation explicitly uses `EMAIL_ALERTS_ENABLED=false` at the owner's request. Feedback remains saved, but no notification emails are sent. To enable alerts, supply rotated SMTP settings and set the flag to `true`; production requires an explicit flag and never silently falls back to console mail. The original public Git history contained an SMTP password and Django key: removing them does not revoke them. Rotate the original mail password at its provider before any reuse. New Django and database secrets were generated directly in protected VPS files. Do not rewrite history without separate authorization.
 5. The owner confirmed a fresh project database. Initialize isolated PostgreSQL and seed the questions/doctors once. If importing legacy data later, review migration `0002`, which restructures/removes old fields and deletes a legacy model; do not apply the complete migration history blindly to an old database.
