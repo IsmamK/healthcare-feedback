@@ -18,9 +18,14 @@ if [[ "$mode" == issue-cert ]]; then
   args=(-d "$FRONTEND_DOMAIN")
   [[ "$API_DOMAIN" == "$FRONTEND_DOMAIN" ]] || args+=(-d "$API_DOMAIN")
   [[ -z "${WWW_DOMAIN:-}" ]] || args+=(-d "$WWW_DOMAIN")
-  [[ "$CERTBOT_EMAIL" != *replace-me* && "$CERTBOT_EMAIL" == *@* ]] || exit 1
+  if [[ "${CERTBOT_WITHOUT_EMAIL:-false}" == true ]]; then
+    notice_args=(--register-unsafely-without-email)
+  else
+    [[ "${CERTBOT_EMAIL:-}" != *replace-me* && "${CERTBOT_EMAIL:-}" == *@* ]] || exit 1
+    notice_args=(--email "$CERTBOT_EMAIL")
+  fi
   certbot certonly --webroot -w "$root/data/acme" --cert-name healthcare-feedback \
-    --non-interactive --agree-tos --email "$CERTBOT_EMAIL" "${args[@]}" \
+    --non-interactive --agree-tos "${notice_args[@]}" "${args[@]}" \
     --deploy-hook 'nginx -t && systemctl reload nginx'
   exit 0
 fi

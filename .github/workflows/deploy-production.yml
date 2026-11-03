@@ -71,8 +71,8 @@ jobs:
           [[ "$VPS_PORT" =~ ^[0-9]+$ && -n "$SSH_KEY" && -n "$KNOWN_HOSTS" ]]
           [[ "$DOCKER_HUB_USERNAME" =~ ^[a-z0-9][a-z0-9_-]+$ ]]
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/healthcare-feedback
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/healthcare-feedback-known-hosts
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/healthcare-feedback
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/healthcare-feedback-known-hosts
           chmod 600 ~/.ssh/healthcare-feedback*
           cat > ~/.ssh/config <<EOF
           Host healthcare-feedback-vps
@@ -114,9 +114,6 @@ jobs:
         with:
           context: frontend
           push: true
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL || '/backend/api/' }}
-            VITE_BULK_SMS_API_URL=${{ vars.VITE_BULK_SMS_API_URL || 'https://bulksmsbd.net/api/smsapi' }}
           tags: ${{ env.DOCKER_HUB_USERNAME }}/healthcare-feedback-frontend:sha-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           cache-from: type=gha,scope=healthcare-feedback-frontend
           cache-to: type=gha,mode=max,scope=healthcare-feedback-frontend
@@ -140,7 +137,7 @@ jobs:
           ssh healthcare-feedback-vps "mkdir -m 700 '$release'"
           # Copy only reviewed operational files. Never transfer runtime env files or application source.
           tar -C deploy -czf "$RUNNER_TEMP/release.tar.gz" compose.yml scripts images.env \
-            env/backend.env.example env/database.env.example env/site.env.example env/backup.env.example
+            env/backend.env.example env/database.env.example env/frontend.env.example env/site.env.example env/backup.env.example
           scp "$RUNNER_TEMP/release.tar.gz" "healthcare-feedback-vps:$release/bundle.tar.gz"
           ssh healthcare-feedback-vps "tar -xzf '$release/bundle.tar.gz' -C '$release' && bash '$release/scripts/release.sh' '$release'"
           python3 deploy/scripts/verify.py "$FRONTEND_DOMAIN" "$API_DOMAIN"

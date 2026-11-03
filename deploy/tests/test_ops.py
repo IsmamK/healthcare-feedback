@@ -89,3 +89,32 @@ class NginxTests(unittest.TestCase):
     def test_domain_injection_rejected(self):
         with self.assertRaises(ValueError):
             self.render("FRONTEND_DOMAIN=example.com;include /tmp/bad\nAPI_DOMAIN=example.com\nBACKEND_PORT=18000\nFRONTEND_PORT=18080\n")
+
+
+class EnvironmentTests(unittest.TestCase):
+    def setUp(self):
+        self.module = load("sync-env")
+        self.values = self.module.parse((SCRIPTS.parent / ".env.example").read_text())
+        self.values.update(DJANGO_SECRET_KEY="test-only-" + "a" * 60, POSTGRES_PASSWORD="test-only-" + "b" * 40)
+
+    def test_literal_password_characters_are_preserved(self):
+        password = "test-only-" + "$#" * 20
+        self.values["POSTGRES_PASSWORD"] = password
+        files = self.module.render(self.values)
+        self.assertIn(f"POSTGRES_PASSWORD={password}\n", files["database.env"])
+
+    def test_disabled_email_can_launch_without_smtp_and_frontend_has_no_secrets(self):
+        files = self.module.render(self.values)
+        self.assertIn("EMAIL_ALERTS_ENABLED=false", files["backend.env"])
+        self.assertNotIn("PASSWORD", files["frontend.env"])
+        self.assertNotIn("SECRET", files["frontend.env"])
+        self.assertNotIn("AWS_SECRET", files["backend.env"])
+
+    def test_enabled_email_requires_configuration(self):
+        self.values["EMAIL_ALERTS_ENABLED"] = "true"
+        with self.assertRaisesRegex(ValueError, "EMAIL_HOST"):
+            self.module.render(self.values)
+
+    def test_unknown_settings_are_rejected(self):
+        with self.assertRaises(ValueError):
+            self.module.parse("EMAIL_HOST_PASWORD=example")

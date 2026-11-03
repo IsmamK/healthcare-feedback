@@ -25,7 +25,7 @@ import { apiFetch, formatDate, formatDateTime, hasUsablePhone } from '../config/
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const cls = (...args) => args.filter(Boolean).join(' ');
-const BULK_SMS_API_URL = import.meta.env.VITE_BULK_SMS_API_URL || 'https://bulksmsbd.net/api/smsapi';
+const BULK_SMS_API_URL = window.__APP_CONFIG__?.BULK_SMS_API_URL || import.meta.env.VITE_BULK_SMS_API_URL || 'https://bulksmsbd.net/api/smsapi';
 
 const statusOptions = [
   { value: 'all', label: 'All Statuses' },
@@ -1497,7 +1497,7 @@ function BulkSMSTab({ status, setStatus, defaultNumbers }) {
           <li>• Use one phone number per line for easier checking.</li>
           <li>• Keep messages short and clear.</li>
           <li>• Test with a small batch before sending many SMS.</li>
-          <li>• If sending fails from HTTPS hosting, set <code className="bg-gray-100 px-1 rounded">VITE_BULK_SMS_API_URL</code> to the provider URL that supports HTTPS/CORS.</li>
+          <li>• If sending fails, check your SMS provider settings and account balance.</li>
         </ul>
       </div>
     </div>

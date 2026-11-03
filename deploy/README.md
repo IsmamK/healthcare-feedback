@@ -12,28 +12,42 @@ Repository preparation and local verification are complete. Public production de
 - Django runs with Gunicorn as UID 10001, uses project-private PostgreSQL 17, and serves collected admin/DRF assets through WhiteNoise.
 - The app currently has no uploaded files, workers, Redis, scheduler, WebSockets or server-side SMS credentials. The dashboard SMS form takes an operator-supplied provider key; never put a private key in a `VITE_*` build variable. SMTP alerts need rotated production credentials.
 - Compose project `healthcare-feedback` owns its own network and data. API and frontend ports are bound to loopback only. Proposed host ports `18000` and `18080` were unused on the selected VPS at discovery; check again before binding. PostgreSQL has no published port.
-- Host Nginx uses `/etc/nginx/conf.d/healthcare-feedback.conf`, following this VPS's existing `conf.d` convention. The renderer uses the HTTP/2 syntax supported by the observed Nginx 1.30.6 host. No global Nginx, Docker, SSH or firewall configuration is replaced. The existing `bdeshjobs` application is outside this project's scope.
+- Host Nginx uses `/etc/nginx/conf.d/healthcare-feedback.conf`, following this VPS's existing `conf.d` convention. The renderer preserves the existing shared-host HTTP/2 listen convention on Nginx 1.30.6. No global Nginx, Docker, SSH or firewall configuration is replaced. The existing `bdeshjobs` application is outside this project's scope.
 - A personal-registry directory, `~/.docker-healthcare-feedback`, isolates project pull credentials. It must be mode 700; its `config.json` must be 600. Registry credentials are encoded rather than encrypted unless a credential helper is configured.
 - Docker group membership gives root-equivalent control of the host. Protect the production branch and deployment secrets accordingly; these scripts do not claim that sharing the existing Docker-enabled user provides a strict security boundary.
 
-## One-time remaining inputs
+## Required setup and chosen release policy
+
+The canonical application configuration is **`/opt/healthcare-feedback/.env`**, protected with mode 600. Its safe template is [deploy/.env.example](.env.example). It contains SMTP details and recipients, the explicit email-alert switch, domains/origins, PostgreSQL credentials, browser API/SMS URLs, timezone and backup policy. Browser configuration contains public URLs only. CI SSH/registry access remains managed through GitHub secrets.
+
+To change application settings later, edit the protected main `.env` and run:
+
+```bash
+bash /opt/healthcare-feedback/current/scripts/apply-config.sh
+```
+
+This validates the file, generates least-privilege files under `env/`, checks production settings and SMTP authentication when enabled, and recreates only app containers whose configuration changed. It verifies health/HTTPS and restores the prior service configuration if validation fails. No messages are sent by the SMTP check. Read-only frontend containers generate `/config.js` from the public settings at startup, so changing `PUBLIC_API_URL` or `PUBLIC_BULK_SMS_API_URL` does not require rebuilding an image.
+
+The generated `env/*.env` files should not be edited directly. Values in the main `.env` are literal and unquoted; `$` and `#` in passwords are preserved. Domain/port changes also require matching DNS, certificates and the authorized project Nginx update. Database credential changes are deliberately rejected until a database rotation/import plan is performed; editing a PostgreSQL initialization password does not rotate a running database. Certificate contact email changes require updating the Certbot account as well. Keep image versions under CI control.
 
 Provide secret material through a protected local file or a secure interactive CLI, never chat or Git. The agent can copy/configure it without printing values.
 
 1. Authorized sudo access for project directory creation, the project vhost, Certbot and certificate renewal checks. SSH as `abdullah` works, but `sudo -n` currently requires a password. Do not bypass this through Docker's root privileges.
 2. A Docker Hub namespace and two repositories: `<namespace>/healthcare-feedback-backend` and `<namespace>/healthcare-feedback-frontend`. Prefer private repositories. Use a dedicated CI Read+Write PAT, and a separate VPS Read-only PAT for private pulls. Existing other-project registry credentials are not reused.
-3. A certificate notification email.
-4. A newly rotated SMTP password plus `EMAIL_HOST`, port, username, sender and low-rating recipients. The original public Git history contained an SMTP password and Django key. Removing them from the working tree does not revoke them: rotate the mail password at the provider, use a new generated Django key, and invalidate old application tokens/sessions if this code was previously live. Do not rewrite history without separate authorization.
-5. Confirm whether prior feedback/question/doctor data must be imported. New PostgreSQL is the prepared default; an existing production dataset must be exported and reviewed before migration. This repository's inherited migration `0002` removes/restructures fields and deletes a legacy model, so never apply the entire history to an old unreviewed database.
-6. An offsite restic destination, its credentials and retention policy, or deliberate temporary acceptance of local-only backups (`BACKUP_MODE=local-only-accepted`). Local-only backups do not protect against loss of the VPS. No offsite repository is initialized or pruned automatically.
+3. A certificate notification email, or explicit `CERTBOT_WITHOUT_EMAIL=true`. The owner chose issuance without a contact email. Automatic renewal remains enabled; email expiry notices are unavailable.
+4. This installation explicitly uses `EMAIL_ALERTS_ENABLED=false` at the owner's request. Feedback remains saved, but no notification emails are sent. To enable alerts, supply rotated SMTP settings and set the flag to `true`; production requires an explicit flag and never silently falls back to console mail. The original public Git history contained an SMTP password and Django key: removing them does not revoke them. Rotate the original mail password at its provider before any reuse. New Django and database secrets were generated directly in protected VPS files. Do not rewrite history without separate authorization.
+5. The owner confirmed a fresh project database. Initialize isolated PostgreSQL and seed the questions/doctors once. If importing legacy data later, review migration `0002`, which restructures/removes old fields and deletes a legacy model; do not apply the complete migration history blindly to an old database.
+6. The owner chose local database backups in `/opt/healthcare-feedback/backups`, retaining 14 days, with `BACKUP_MODE=local-only-accepted`. Local-only backups do not protect against VPS loss. Add offsite restic storage later through an approved destination and credentials; these scripts do not initialize or prune a shared repository automatically.
 
 ## Runtime layout and credentials
 
 ```text
 /opt/healthcare-feedback/
   compose/image-tags.env       # atomic copy of the active immutable image references
+  .env                        # canonical application configuration, mode 600
   env/backend.env              # real Django/SMTP configuration, mode 600
   env/database.env             # DB name/user/password, mode 600
+  env/frontend.env             # public runtime browser URLs only, generated from .env
   env/site.env                 # domains, ports, email, backup policy, mode 600
   env/backup.env               # optional restic provider configuration, mode 600
   data/postgres/               # persistent PostgreSQL 17 data
@@ -46,7 +60,7 @@ Provide secret material through a protected local file or a secure interactive C
   transaction.pending         # blocks new releases after interrupted/unsafe failure
 ```
 
-Start with `deploy/env/*.example`; never overwrite a real runtime file with an example on reruns. Production rejects missing required settings and has no SQLite, permissive CORS or console-mail fallback. Compose 2.30+ is required for raw env-file values; the target has Compose v5.4.0. `backend.env` and `database.env` use literal, unquoted `NAME=value` lines. This preserves `$`, `#` and other password characters without shell interpolation. `site.env` and `backup.env` are trusted shell-sourced files; use shell quoting there when needed.
+Start with `deploy/.env.example`; never overwrite the real `.env` with a template on reruns. Production rejects missing required settings and has no SQLite, permissive CORS or console-mail fallback. `sync-env.py` validates the main file and generates protected service-specific files without displaying values. Compose 2.30+ is required for raw env-file values; the target has Compose v5.4.0. Generated `backend.env`, `database.env` and `frontend.env` use literal values, while the generated host/backup files use safe shell quoting.
 
 All following commands are run by the agent after the missing access/input is available. They are an operator reference, not a request that the user perform routine deployment steps manually.
 
@@ -75,7 +89,6 @@ The workflow is [deploy-production.yml](../.github/workflows/deploy-production.y
 | `VPS_KNOWN_HOSTS` | repository secret or variable | verified SSH host-key line |
 | `FRONTEND_DOMAIN`, `API_DOMAIN` | repository variables | both `feedback.jghealthcare.com` |
 | `PRODUCTION_AUTO_DEPLOY` | repository variable | `false` until first verified release; `true` for normal automatic pushes |
-| `VITE_API_URL` | optional repository variable | defaults to `/backend/api/` |
 
 Repository secrets are available to the deployment job, which references environment `production`; use production-environment secrets for deployment credentials when an administrator has configured appropriate protection. The current collaborator can set repository secrets; environment review/branch-protection changes may need the owner. No deployment secret is exposed to the pull-request check job. Never use `pull_request_target` to execute untrusted code with these credentials.
 
@@ -98,7 +111,7 @@ sudo certbot renew --cert-name healthcare-feedback --dry-run
 ```
 
 5. Run `release.sh` for the staged bundle (or its workflow step). It validates secrets by presence/permissions, capacity, immutable refs and installed Nginx config; pulls images; starts/reuses DB; inspects migrations; backs up before migration; applies migrations; starts only app services; waits for health; verifies HTTPS/assets/survey data/access boundaries; backs up again; then promotes active metadata atomically. It never recreates an existing DB container as part of an app release.
-6. Create an approved staff account interactively with `docker compose ... run --rm backend python manage.py createsuperuser`. Test real portal login and public feedback submission without exposing credentials or retaining test patient records.
+6. Create an approved initial staff account by passing a generated password through stdin to `python manage.py bootstrap_admin` in the backend container. The command refuses to overwrite an existing account. Store its login details in a protected file, then test real portal login and public feedback submission without retaining test patient records.
 7. Run a subsequent real GitHub release, inspect its run URL/digests and public health, then enable auto-on-main if selected. Local planning tests cover backend-only, frontend-only, infrastructure-only, first-release, missing-image and documentation-only paths; live workflow coverage must be recorded separately.
 8. Install the scoped user backup cron entry using `schedule-backup.sh`, run a fresh backup and isolated restore test, and verify offsite backup status. Schedule times use the VPS timezone, not the Django timezone. Existing backup jobs are preserved.
 

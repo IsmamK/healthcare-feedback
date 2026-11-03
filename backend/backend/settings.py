@@ -9,10 +9,10 @@ PRODUCTION = os.environ.get("DJANGO_ENV", "development") == "production"
 
 
 def required(name):
-    value = os.environ.get(name, "").strip()
-    if not value or value.lower().startswith(("change-me", "replace-me")):
+    value = os.environ.get(name, "")
+    if not value.strip() or value.lower().startswith(("change-me", "replace-me")):
         raise ImproperlyConfigured(f"{name} must be configured")
-    return value
+    return value if name in {"DJANGO_SECRET_KEY", "POSTGRES_PASSWORD", "EMAIL_HOST_PASSWORD"} else value.strip()
 
 
 def csv_env(name, default=""):
@@ -84,7 +84,7 @@ if PRODUCTION and not FRONTEND_URL.startswith("https://"):
     raise ImproperlyConfigured("FRONTEND_URL must use HTTPS")
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Dhaka"
+TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Asia/Dhaka")
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/backend/static/"
@@ -109,18 +109,27 @@ SECURE_HSTS_PRELOAD = False
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 X_FRAME_OPTIONS = "DENY"
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if PRODUCTION else "django.core.mail.backends.console.EmailBackend"
-EMAIL_HOST = required("EMAIL_HOST") if PRODUCTION else os.environ.get("EMAIL_HOST", "localhost")
+email_choice = required("EMAIL_ALERTS_ENABLED") if PRODUCTION else os.environ.get("EMAIL_ALERTS_ENABLED", "true")
+if email_choice not in {"true", "false"}:
+    raise ImproperlyConfigured("EMAIL_ALERTS_ENABLED must explicitly be true or false")
+EMAIL_ALERTS_ENABLED = email_choice == "true"
+REQUIRE_SMTP = PRODUCTION and EMAIL_ALERTS_ENABLED
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend" if REQUIRE_SMTP
+    else "django.core.mail.backends.dummy.EmailBackend" if not EMAIL_ALERTS_ENABLED
+    else "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = required("EMAIL_HOST") if REQUIRE_SMTP else os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "465"))
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "true").lower() == "true"
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false").lower() == "true"
 if EMAIL_USE_SSL and EMAIL_USE_TLS:
     raise ImproperlyConfigured("Choose either EMAIL_USE_SSL or EMAIL_USE_TLS")
-EMAIL_HOST_USER = required("EMAIL_HOST_USER") if PRODUCTION else ""
-EMAIL_HOST_PASSWORD = required("EMAIL_HOST_PASSWORD") if PRODUCTION else ""
-DEFAULT_FROM_EMAIL = required("DEFAULT_FROM_EMAIL") if PRODUCTION else "webmaster@localhost"
+EMAIL_HOST_USER = required("EMAIL_HOST_USER") if REQUIRE_SMTP else ""
+EMAIL_HOST_PASSWORD = required("EMAIL_HOST_PASSWORD") if REQUIRE_SMTP else ""
+DEFAULT_FROM_EMAIL = required("DEFAULT_FROM_EMAIL") if REQUIRE_SMTP else "webmaster@localhost"
 LOW_RATING_EMAILS = csv_env("LOW_RATING_EMAILS")
-if PRODUCTION and not LOW_RATING_EMAILS:
+if REQUIRE_SMTP and not LOW_RATING_EMAILS:
     raise ImproperlyConfigured("LOW_RATING_EMAILS must be configured")
 EMAIL_TIMEOUT = 10
 LOGGING = {

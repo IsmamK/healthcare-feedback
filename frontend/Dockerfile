@@ -3,13 +3,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-ARG VITE_API_URL=/backend/api/
-ARG VITE_BULK_SMS_API_URL=https://bulksmsbd.net/api/smsapi
-ENV VITE_API_URL=$VITE_API_URL VITE_BULK_SMS_API_URL=$VITE_BULK_SMS_API_URL
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 docker-entrypoint.sh /docker-entrypoint.d/40-healthcare-feedback-config.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 USER 101
 EXPOSE 8080

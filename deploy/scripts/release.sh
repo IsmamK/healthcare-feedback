@@ -3,14 +3,15 @@
 set -Eeuo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-load_site
 RELEASE_DIR=$(realpath "${1:?Usage: release.sh /opt/healthcare-feedback/releases/id}")
 [[ "$RELEASE_DIR" == "$PROJECT_ROOT"/releases/* && -f "$RELEASE_DIR/images.env" ]] || fail 'Invalid release bundle'
 exec 9>"$PROJECT_ROOT/release.lock"
 flock -w 1800 9
 export DEPLOY_LOCK_HELD=1
 [[ ! -e "$PROJECT_ROOT/transaction.pending" ]] || fail 'Interrupted release requires reconciliation; see deploy/README.md'
-for file in backend.env database.env site.env; do
+python3 "$RELEASE_DIR/scripts/sync-env.py"
+load_site
+for file in backend.env database.env frontend.env site.env; do
   [[ -s "$PROJECT_ROOT/env/$file" ]] || fail "Missing env/$file"
   mode=$(stat -c %a "$PROJECT_ROOT/env/$file")
   [[ "$mode" == 600 || "$mode" == 400 ]] || fail "Restrict env/$file to mode 600"
@@ -31,6 +32,7 @@ fi
 compose config --quiet
 compose pull backend frontend
 compose run --rm --no-deps backend python manage.py check --deploy --fail-level WARNING
+compose run --rm -T --no-deps backend python manage.py check_notifications
 # Validate the installed, project-only Nginx configuration before any DB or app changes.
 python3 "$RELEASE_DIR/scripts/render-nginx.py" "$PROJECT_ROOT/env/site.env" tls >"$RELEASE_DIR/site.conf"
 cmp --silent "$RELEASE_DIR/site.conf" /etc/nginx/conf.d/healthcare-feedback.conf \

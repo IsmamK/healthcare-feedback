@@ -145,6 +145,8 @@ class FeedbackResponseViewSet(viewsets.ModelViewSet):
             """
             Send a beautifully formatted email for low ratings
             """
+            if not settings.EMAIL_ALERTS_ENABLED:
+                return
             from django.utils import timezone
             from django.core.mail import EmailMultiAlternatives
             import html

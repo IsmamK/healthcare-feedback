@@ -4,6 +4,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urljoin
 
 
 def get(url, expected=200):
@@ -27,6 +28,20 @@ if __name__ == "__main__":
         raise RuntimeError("Frontend HTML has no built assets")
     for asset in assets:
         get(f"https://{frontend}{asset}")
+    config = get(f"https://{frontend}/config.js").decode()
+    prefix = "window.__APP_CONFIG__ = "
+    if not config.startswith(prefix):
+        raise RuntimeError("Runtime browser configuration was not generated")
+    browser_config = json.loads(config[len(prefix):].strip().removesuffix(";"))
+    if not browser_config.get("API_URL") or not browser_config.get("BULK_SMS_API_URL"):
+        raise RuntimeError("Runtime browser API configuration is incomplete")
+    browser_api = urljoin(f"https://{frontend}/", browser_config["API_URL"])
+    if not browser_api.endswith("/api/"):
+        raise RuntimeError("Browser API URL must end in /api/")
+    browser_readiness = browser_api[:-4] + "health/ready/"
+    if json.loads(get(browser_readiness)).get("status") != "ready":
+        raise RuntimeError("Configured browser API is not ready")
+    get(f"https://{frontend}/logo.png")
     get(f"https://{frontend}/login")
     if json.loads(get(f"https://{api}/backend/health/ready/"))["status"] != "ready":
         raise RuntimeError("API not ready")

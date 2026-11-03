@@ -42,6 +42,9 @@ services:
     image: ${FRONTEND_IMAGE:?Set immutable FRONTEND_IMAGE}
     restart: unless-stopped
     init: true
+    env_file:
+      - path: ${PROJECT_ROOT}/env/frontend.env
+        format: raw
     ports: ["127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT}:8080"]
     read_only: true
     tmpfs: [/tmp]

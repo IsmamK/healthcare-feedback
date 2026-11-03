@@ -2,7 +2,9 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import OperationalError
-from django.test import override_settings
+from django.test import override_settings, TestCase
+from django.core.management import call_command, CommandError
+from io import StringIO
 from rest_framework.test import APITestCase
 
 from .models import Doctor, FeedbackResponse, Question
@@ -75,6 +77,17 @@ class AccessTests(APITestCase):
         response = self.client.post("/auth/token/login/", {"username": "patient", "password": "test-pass-only"})
         self.assertEqual(response.status_code, 403)
 
+    @override_settings(EMAIL_ALERTS_ENABLED=False)
+    def test_low_rating_is_saved_when_email_alerts_are_explicitly_disabled(self):
+        with patch("django.core.mail.EmailMultiAlternatives.send") as send:
+            response = self.client.post("/api/feedback/submit_feedback/", {
+                "phone_number": "01712345678", "answers": {"care": {"rating": 2}},
+                "additional_responses": {"care": "Deployment test"},
+            }, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(FeedbackResponse.objects.get(pk=response.data["id"]).average_rating, 2)
+        send.assert_not_called()
+
 
 @override_settings(SECURE_SSL_REDIRECT=True, FORCE_SCRIPT_NAME="/backend")
 class HealthTests(APITestCase):
@@ -86,3 +99,17 @@ class HealthTests(APITestCase):
         with patch("backend.health.connection.cursor", side_effect=OperationalError("test outage")):
             self.assertEqual(self.client.get("/health/ready/").status_code, 503)
             self.assertEqual(self.client.get("/health/live/").status_code, 200)
+
+
+class AdminBootstrapTests(TestCase):
+    def test_initial_administrator_is_created_without_resetting_existing_credentials(self):
+        initial = "test-administrator-password-not-production"
+        with patch("sys.stdin", StringIO(initial + "\n")):
+            call_command("bootstrap_admin", stdout=StringIO())
+        user = get_user_model().objects.get(username="admin")
+        self.assertTrue(user.is_superuser and user.is_staff and user.check_password(initial))
+        with patch("sys.stdin", StringIO("different-test-password-not-production\n")):
+            with self.assertRaises(CommandError):
+                call_command("bootstrap_admin", stdout=StringIO())
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(initial))
