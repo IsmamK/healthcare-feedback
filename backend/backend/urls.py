@@ -16,12 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from .health import live, ready
+from api.auth import StaffTokenLogin, StaffTokenLogout
 
 urlpatterns = [
+    path('health/live/', live),
+    path('health/ready/', ready),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),  # ✅ Correct way to include app urls
 
-        path('auth/', include('djoser.urls')),  # Djoser authentication views
-    path('auth/', include('djoser.urls.authtoken')),  #
+    path('auth/token/login/', StaffTokenLogin.as_view()),
+    path('auth/token/logout/', StaffTokenLogout.as_view()),
 
 ]

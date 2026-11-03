@@ -1,0 +1,53 @@
+name: healthcare-feedback
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+services:
+  db:
+    image: postgres:17-bookworm@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5
+    restart: unless-stopped
+    env_file:
+      - path: ${PROJECT_ROOT:?Set PROJECT_ROOT}/env/database.env
+        format: raw
+    volumes:
+      - ${PROJECT_ROOT}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *logging
+  backend:
+    image: ${BACKEND_IMAGE:?Set immutable BACKEND_IMAGE}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    env_file:
+      - path: ${PROJECT_ROOT}/env/backend.env
+        format: raw
+      - path: ${PROJECT_ROOT}/env/database.env
+        format: raw
+    environment:
+      DJANGO_ENV: production
+      POSTGRES_HOST: db
+    ports: ["127.0.0.1:${BACKEND_PORT:?Set BACKEND_PORT}:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set immutable FRONTEND_IMAGE}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ${PROJECT_ROOT}/env/frontend.env
+        format: raw
+    ports: ["127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT}:8080"]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
